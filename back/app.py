@@ -313,3 +313,5 @@ def index():
             return jsonify({"message": "Invalid station code"}), 500
 if __name__ == '__main__':
     socketio.run(app, debug=True)
+    from waitress import serve
+    serve(app, host="0.0.0.0", port=8080)
