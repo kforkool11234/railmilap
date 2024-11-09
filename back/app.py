@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 import threading
 from flask_socketio import SocketIO, emit
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 socketio = SocketIO(app)
 
 # Load data
