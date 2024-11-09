@@ -22,7 +22,7 @@ function SearchForm() {
     };
 
     try {
-      const response = await axios.post('https://railmilap.onrender.com/routes', dataToSend);
+      const response = await axios.post('https://railmilap.onrender.com//routes', dataToSend);
       console.log(response.data);
       setRedirectToPath(true); // Set state to trigger navigation
     } catch (error) {
