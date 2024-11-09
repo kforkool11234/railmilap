@@ -21,7 +21,8 @@ with open('available_train.pkl', 'rb') as f:
     avil = pickle.load(f)
 with open('length.pkl', 'rb') as fi:
     length = pickle.load(fi)
-co_mat = np.load('co_mat.npy')
+with open ('co_mat.pkl','rb') as f:
+    co_mat=pickle.load(f)
 with open('restructuredData.pkl', 'rb') as f:
     train_schedule = pickle.load(f)
 with open('train_days_cache.pkl', 'rb') as f:
@@ -55,9 +56,9 @@ def merge_nearby_nodes(center_node, graph, threshold=10):
         graph.remove_node(node)
     return center_node
 
-def save_cache():
+def save_cache(trd):
     with open('train_days_cache.pkl', 'wb') as f:
-        pickle.dump(train_days_cache, f)
+        pickle.dump(trd, f)
 def get_running_days(url):
     # Send a GET request to the webpage
     response = requests.get(url)
@@ -197,9 +198,14 @@ def tt_min(x):
 def get_waitlist_results(src, des, day):
     src_co = encode[src]
     des_co = encode[des]
-    con_sta = [i for i in range(len(encode)) if co_mat[src_co][i] != 0]
-    intr = [i for i in con_sta if co_mat[i][des_co] != 0]
-
+    con_sta = []
+    for i in co_mat:
+        if i[0]==src_co:
+            con_sta.append(i[1])
+    intr = []
+    for i in con_sta:
+        if (i,des_co) in co_mat:
+            intr.append(i)
     graph = nx.MultiDiGraph()
     graph.add_node(src_co)
     graph.add_node(des_co)
@@ -293,6 +299,7 @@ def get_waitlist_results(src, des, day):
                     raise
     waitlist_results = sorted(waitlist_results, key=lambda x: tt_min(x['total']))
     socketio.emit("Done")
+    save_cache(train_days_cache)
     return waitlist_results
 
 @app.route('/routes', methods=['GET', 'POST'])
