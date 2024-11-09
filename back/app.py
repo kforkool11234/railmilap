@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 import threading
 from flask_socketio import SocketIO, emit
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="http://localhost:3000")
+socketio = SocketIO(app, cors_allowed_origins="https://railmilap.vercel.app/")
 CORS(app)
 # Load data
 with open('station_code_to_index.json', 'r') as f:

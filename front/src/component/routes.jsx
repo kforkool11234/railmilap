@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import io from "socket.io-client";
 
 // Connect to the WebSocket server
-const socket = io("http://127.0.0.1:5000");
+const socket = io("https://railmilap.onrender.com");
 
 function WaitlistResults({ src, des, day }) {
     const [waitlistResults, setWaitlistResults] = useState([]);
