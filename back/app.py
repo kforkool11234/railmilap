@@ -12,7 +12,7 @@ import threading
 from flask_socketio import SocketIO, emit
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Load data
 with open('station_code_to_index.json', 'r') as f:
