@@ -22,7 +22,7 @@ function SearchForm() {
     };
 
     try {
-      const response = await axios.post('https://railmilap.onrender.com//routes', dataToSend);
+      const response = await axios.post('http://127.0.0.1:5000/routes', dataToSend);
       console.log(response.data);
       setRedirectToPath(true); // Set state to trigger navigation
     } catch (error) {
@@ -35,7 +35,7 @@ function SearchForm() {
 
   // Redirect if redirectToPath is true
   if (redirectToPath) {
-    return <Navigate to="/path" />;
+    return <Navigate to="/path"/>;
   }
 
   return (

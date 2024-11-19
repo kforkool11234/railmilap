@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import io from "socket.io-client";
-
+import axios from "axios"
 // Connect to the WebSocket server
-const socket = io("https://railmilap.onrender.com//routes");
+const socket = io("127.0.0.1:5000");
 
 function WaitlistResults({ src, des, day }) {
     const [waitlistResults, setWaitlistResults] = useState([]);
@@ -15,9 +15,6 @@ function WaitlistResults({ src, des, day }) {
 
     useEffect(() => {
         // Listen for "new_journey" events from the server
-        socket.on("journey_details", (details) => {
-            setJourneyDetails(details);
-        });
         socket.on("new_journey", (newJourneys) => {
             setLoadingMore(true);
             setWaitlistResults((prevResults) => {
@@ -26,14 +23,28 @@ function WaitlistResults({ src, des, day }) {
                 return updatedResults;
             });
         });
+        socket.on("details",(data)=>{
+            setJourneyDetails({
+                src:data.src,
+                des:data.des,
+                day:data.day
+            })
+            console.log(journeyDetails)
+            if(data){
+                console.log('true')
+            }else{console.log('false')}
+            // setJourneyDetails(details)
+        })
         socket.on("Done", () => {
             setLoadingMore(false); // Stop loading when all data is received
         });
 
         // Clean up the event listener on component unmount
         return () => {
+            socket.off("journey_details");
             socket.off("Done");
             socket.off("new_journey");
+            
             
         };
     }, []);

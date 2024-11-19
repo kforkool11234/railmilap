@@ -11,8 +11,8 @@ from bs4 import BeautifulSoup
 import threading
 from flask_socketio import SocketIO, emit
 app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="http://localhost:3000")
 CORS(app, resources={r"/*": {"origins": "*"}})
-socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Load data
 with open('station_code_to_index.json', 'r') as f:
@@ -31,11 +31,12 @@ with open('train_days_cache.pkl', 'rb') as f:
 
 def res(src, des, day):
     with app.app_context():
-        socketio.emit("journey_details", {
+        data={
             "src": src,
             "des": des,
             "day": day
-        })
+        }
+        socketio.emit("deta", data)
         results = get_waitlist_results(src, des, day)
         print(results)
         return("done")
@@ -197,6 +198,12 @@ def tt_min(x):
     return(int(hours*60+minutes))
 
 def get_waitlist_results(src, des, day):
+    da={
+            "src": src,
+            "des": des,
+            "day": day
+        }
+    socketio.emit("details",da)
     src_co = encode[src]
     des_co = encode[des]
     con_sta = []
@@ -313,6 +320,8 @@ def index():
             day = data['day'].upper()
         except:
             return jsonify({"message": "Please enter a date"}), 500
+
+        print('emiteed')
         thread = threading.Thread(target=res, args=(src, des, day))
         thread.start()
         if src in encode and des in encode and src!='' and des!='':
@@ -320,5 +329,4 @@ def index():
         else:
             return jsonify({"message": "Invalid station code"}), 500
 if __name__ == '__main__':
-    from waitress import serve
-    serve(app, host="0.0.0.0", port=8080)
+    socketio.run(app, debug=True)
