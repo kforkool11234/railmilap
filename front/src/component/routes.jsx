@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import io from "socket.io-client";
 import axios from "axios"
 // Connect to the WebSocket server
-const socket = io("127.0.0.1:5000");
+const socket = io("127.0.0.1:5000/routes");
 
 function WaitlistResults({ src, des, day }) {
     const [waitlistResults, setWaitlistResults] = useState([]);
