@@ -1,4 +1,5 @@
-# app.py
+import eventlet
+eventlet.monkey_patch()
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import json
@@ -8,10 +9,13 @@ import networkx as nx
 from datetime import timedelta, datetime
 import requests
 from bs4 import BeautifulSoup
-import threading
 from flask_socketio import SocketIO, emit
+
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins=["http://localhost:3000",'https://railmilap.vercel.app'])
+socketio = SocketIO(app, 
+                   cors_allowed_origins=["http://localhost:3000", 'https://railmilap.vercel.app', "http://localhost:3000//path"],
+                   async_mode='eventlet',
+                   logger=True)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Load data
@@ -22,24 +26,38 @@ with open('available_train.pkl', 'rb') as f:
     avil = pickle.load(f)
 with open('length.pkl', 'rb') as fi:
     length = pickle.load(fi)
-with open ('co_mat.pkl','rb') as f:
-    co_mat=pickle.load(f)
+with open('co_mat.pkl', 'rb') as f:
+    co_mat = pickle.load(f)
 with open('restructuredData.pkl', 'rb') as f:
     train_schedule = pickle.load(f)
 with open('train_days_cache.pkl', 'rb') as f:
     train_days_cache = pickle.load(f)
 
+def emit_with_retry(event_name, data, retries=3):
+    """Emit an event with retry logic"""
+    i=0
+    for _ in range(retries):
+        try:
+            i+=1
+            print(i)
+            socketio.emit(event_name, data)
+            return True
+        except Exception as e:
+           print('trying')
+    return False
+
 def res(src, des, day):
-    with app.app_context():
-        data={
-            "src": src,
-            "des": des,
-            "day": day
-        }
-        socketio.emit("deta", data)
+    """Process route search with direct event emissions"""
+    try:
         results = get_waitlist_results(src, des, day)
-        print(results)
-        return("done")
+        if results:
+            emit_with_retry("search_complete", {"results": results})
+        else:
+            emit_with_retry("error", {"message": "No routes found"})
+        return "done"
+    except Exception as e:
+        emit_with_retry("error", {"message": str(e)})
+        return "error"
 def merge_nearby_nodes(center_node, graph, threshold=10):
     # Original merge_nearby_nodes code from graph3.py
     nearby_nodes = [
@@ -63,11 +81,12 @@ def save_cache(trd):
         pickle.dump(trd, f)
 def get_running_days(url):
     # Send a GET request to the webpage
-    response = requests.get(url)
-    response.raise_for_status()  # Check if the request was successful
-    soup = BeautifulSoup(response.text, "html.parser")
+    
     
     try:
+        response = requests.get(url)
+        response.raise_for_status()  # Check if the request was successful
+        soup = BeautifulSoup(response.text, "html.parser")
         body = soup.find("body")
         flex_col = body.find("div", class_="flexCol wd1012 pdlr2 pdu2")
         lowerdata = flex_col.find(id="lowerdata")
@@ -197,27 +216,31 @@ def tt_min(x):
     hours, minutes = map(int, x.replace(" hrs","").split(':'))
     return(int(hours*60+minutes))
 
+
 def get_waitlist_results(src, des, day):
-    da={
-            "src": src,
-            "des": des,
-            "day": day
-        }
-    socketio.emit("details",da)
+    """Modified to use direct event emission"""
+    emit_with_retry("details", {
+        "src": src,
+        "des": des,
+        "day": day
+    })
+    
     src_co = encode[src]
     des_co = encode[des]
     con_sta = []
     for i in co_mat:
-        if i[0]==src_co:
+        if i[0] == src_co:
             con_sta.append(i[1])
+    
     intr = []
     for i in con_sta:
-        if (i,des_co) in co_mat:
+        if (i, des_co) in co_mat:
             intr.append(i)
+    
     graph = nx.MultiDiGraph()
     graph.add_node(src_co)
     graph.add_node(des_co)
-
+    
     for i in intr:
         graph.add_node(i)
     for i in intr:
@@ -227,19 +250,20 @@ def get_waitlist_results(src, des, day):
         for j in avil.get((i, des_co), []):
             distance = length.get((i, des_co), 0.0)
             graph.add_edge(i, des_co, train=str(j), weight=distance)
-
+    
     src_co = merge_nearby_nodes(src_co, graph)
     des_co = merge_nearby_nodes(des_co, graph)
-
-    # Same logic as in graph3.py for finding waitlist results
-    sl = dict()
+    
     waitlist_results = []
+    sl = dict()
+    
+    # Build the sl dictionary
     for i in list(graph.nodes()):
-        if i==src_co or i==des_co:
+        if i == src_co or i == des_co:
             continue
         in_edge = list(graph.in_edges(i, data=True))
         out_edge = list(graph.out_edges(i, data=True))
-
+        
         for a in in_edge:
             in_t = get_station_time(train_schedule, a[2].get('train').strip("'"), decode[i])
             in_time_only = timedelta(hours=in_t.seconds // 3600, minutes=(in_t.seconds // 60) % 60)
@@ -254,79 +278,84 @@ def get_waitlist_results(src, des, day):
                         sl[i] = []
                     sl[i].append({1: a[2].get('train').strip("'"), 2: b[2].get('train').strip("'")})
 
+    
+
     for i in sl:
         for entry in sl[i]:
             try:
                 train_id_1 = entry[1]
                 train_id_2 = entry[2]
+
                 
+                # Get train days
                 if train_id_1 in train_days_cache:
                     train1_days = train_days_cache[train_id_1]
                 else:
                     url = f"https://etrain.info/train/{train_id_1}/history"
                     train1_days = get_running_days(url)
                     train_days_cache[train_id_1] = train1_days
-
+                
                 if day in train1_days or 'Daily' in train1_days:
-
                     if train_id_2 in train_days_cache:
                         train2_days = train_days_cache[train_id_2]
                     else:
                         url = f"https://etrain.info/train/{train_id_2}/history"
                         train2_days = get_running_days(url)
                         train_days_cache[train_id_2] = train2_days
-
+                    
                     train1_day = day
                     train1_time = get_time(train_schedule,train_id_1,decode[i])
                     train2_day = train2_days
                     train2_time = get_time(train_schedule,train_id_2,decode[i])  
                     wait_times = calculate_wait_time(train1_day, train1_time, train2_day, train2_time)
                     
+                    
                     for schedule in wait_times:
                         if 4 < schedule[1] < 10:
-                            waitlist_results.append({
+                            journey_data = {
                                 "station": decode[i],
                                 "train1": train_id_1,
                                 "train2": train_id_2,
                                 "interval": f"{schedule[1]} hrs {schedule[2]} mins",
-                                "total":total_time(train1_time,train2_time,train_id_1,train_id_2,f"{schedule[1]}:{schedule[2]}")
-                            })
-                            data=[{
-                                "station": decode[i],
-                                "train1": train_id_1,
-                                "train2": train_id_2,
-                                "interval": f"{schedule[1]} hrs {schedule[2]} mins",
-                                "total":total_time(train1_time,train2_time,train_id_1,train_id_2,f"{schedule[1]}:{schedule[2]}")
-                            }]
-                            socketio.emit("new_journey", data)
-                        
+                                "total": total_time(train1_time, train2_time, train_id_1, train_id_2, f"{schedule[1]}:{schedule[2]}")
+                            }
+                            waitlist_results.append(journey_data)
+                            emit_with_retry("new_journey", [journey_data])
+                
             except Exception as e:
-                if "404" in str(e):
+                if "Max retries exceeded with url" in str(e):  # Ignore 404 errors
                     break
-                else:
-                    raise
+                   
     waitlist_results = sorted(waitlist_results, key=lambda x: tt_min(x['total']))
-    socketio.emit("Done")
     save_cache(train_days_cache)
+    emit_with_retry("Done", None)
     return waitlist_results
 
 @app.route('/routes', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        data = request.json
-        src = data['fromStation'].upper()
-        des = data['toStation'].upper()
         try:
-            day = data['day'].upper()
-        except:
-            return jsonify({"message": "Please enter a date"}), 500
+            data = request.json
+            src = data['fromStation'].upper()
+            des = data['toStation'].upper()
+            day = data.get('day', '').upper()
+            
+            if not day:
+                return jsonify({"message": "Please enter a date"}), 400
+            
+            if src not in encode or des not in encode or not src or not des:
+                return jsonify({"message": "Invalid station code"}), 400
+            
+            # Start processing in background
+            eventlet.spawn(res, src, des, day)
+            return jsonify({"message": "Search started successfully"}), 202
+            
+        except Exception as e:
+            return jsonify({"message": f"Error: {str(e)}"}), 500
 
-        print('emiteed')
-        thread = threading.Thread(target=res, args=(src, des, day))
-        thread.start()
-        if src in encode and des in encode and src!='' and des!='':
-            return jsonify({"message": "Message received successfully"}), 200
-        else:
-            return jsonify({"message": "Invalid station code"}), 500
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, 
+                host='0.0.0.0', 
+                port=5000, 
+                debug=False,
+                use_reloader=False)
