@@ -1,12 +1,16 @@
 import React from 'react';
-import "../index.css";
 
 function Footer() {
   return (
-    <div className="bg-black text-white w-full fixed bottom-0 left-0">
-      <div className="flex justify-around items-center p-4">
-        <a href="#" className="font-custom text-lg tracking-wide antialiased">About Us</a>
-        <a href="#" className="font-custom text-lg tracking-wide antialiased">Contact Us</a>
+    <div className="w-full bg-white/80 dark:bg-dark-bg/80 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 transition-colors duration-300 z-50">
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center py-6 px-6 md:px-12 text-sm text-slate-500 dark:text-slate-400">
+        <p>© 2026 RailMilap. All rights reserved.</p>
+        <div className="flex space-x-6 mt-4 md:mt-0">
+          <a href="#" className="hover:text-brand dark:hover:text-brand-light transition-colors font-medium">About Us</a>
+          <a href="#" className="hover:text-brand dark:hover:text-brand-light transition-colors font-medium">Privacy</a>
+          <a href="#" className="hover:text-brand dark:hover:text-brand-light transition-colors font-medium">Terms</a>
+          <a href="#" className="hover:text-brand dark:hover:text-brand-light transition-colors font-medium">Contact Us</a>
+        </div>
       </div>
     </div>
   );
