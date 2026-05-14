@@ -6,6 +6,7 @@ from .models import Station
 from .scraper import get_train_running_days
 from datetime import datetime, timedelta
 import concurrent.futures
+import os
 
 def time_to_seconds(day_str, time_obj, day_count=0):
     day_to_index = {
@@ -98,14 +99,20 @@ def find_routes(request):
         # Cache running days concurrently to avoid slow sequential scraping
         train_running_days = {}
         
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-            future_to_train = {executor.submit(get_train_running_days, t): t for t in all_unique_trains}
-            for future in concurrent.futures.as_completed(future_to_train):
-                t = future_to_train[future]
-                try:
-                    train_running_days[t] = future.result()
-                except Exception:
-                    train_running_days[t] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
+        if os.environ.get('SCRAPING_ENABLED', 'True') == 'True':
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                future_to_train = {executor.submit(get_train_running_days, t): t for t in all_unique_trains}
+                for future in concurrent.futures.as_completed(future_to_train):
+                    t = future_to_train[future]
+                    try:
+                        train_running_days[t] = future.result()
+                    except Exception:
+                        train_running_days[t] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
+        else:
+            # Scraping disabled (e.g. production) — default all trains to daily
+            for t in all_unique_trains:
+                days = get_train_running_days(t)  # reads from DB only, no scraping
+                train_running_days[t] = days
             
         for row in rows:
             first_train = row[0]
