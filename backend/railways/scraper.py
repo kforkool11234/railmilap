@@ -28,7 +28,7 @@ def get_running_days_from_web(train_no):
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
-        response = requests.get(url, headers=headers, timeout=(2, 5), allow_redirects=False)
+        response = requests.get(url, headers=headers, timeout=(1, 3), allow_redirects=True)
         
         if response.status_code != 200:
             logger.error(f"Non-200 status code for {url}")

@@ -98,7 +98,7 @@ def find_routes(request):
         # Cache running days concurrently to avoid slow sequential scraping
         train_running_days = {}
         
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
             future_to_train = {executor.submit(get_train_running_days, t): t for t in all_unique_trains}
             for future in concurrent.futures.as_completed(future_to_train):
                 t = future_to_train[future]
