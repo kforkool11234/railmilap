@@ -109,10 +109,9 @@ def find_routes(request):
                     except Exception:
                         train_running_days[t] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
         else:
-            # Scraping disabled (e.g. production) — default all trains to daily
+            # Scraping disabled in production — assume all trains run daily
             for t in all_unique_trains:
-                days = get_train_running_days(t)  # reads from DB only, no scraping
-                train_running_days[t] = days
+                train_running_days[t] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
             
         for row in rows:
             first_train = row[0]
