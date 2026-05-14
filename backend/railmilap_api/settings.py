@@ -29,7 +29,7 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 CORS_ALLOWED_ORIGINS = [
-    "https://railmilap-38by-parwgkwyp-kforkool11234s-projects.vercel.app/",
+    "https://railmilap-38by-parwgkwyp-kforkool11234s-projects.vercel.app",
 ]
 
 
