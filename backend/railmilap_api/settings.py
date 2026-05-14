@@ -28,9 +28,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-local-dev-only')
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
-CORS_ALLOWED_ORIGINS = [
-    "https://railmilap-38by.vercel.app",
-]
+CORS_ALLOW_ALL_ORIGINS = True
 
 
 
